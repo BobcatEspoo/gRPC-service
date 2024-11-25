@@ -14,13 +14,15 @@ services:
       - db
     volumes:
       - ./RatesMicroservice/internal/migrations:/app/internal/migrations
-#      - ./wait-for-it.sh:/wait-for-it.sh
     command: >
       sh -c "echo 'Starting migrations...' &&
              ./wait-for-it.sh db:5432 -- &&
              migrate -verbose -path /app/internal/migrations -database $DB_URL up &&
              echo 'Running app...' &&
              ./rates"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
     networks:
       - frontend
   db:
@@ -40,6 +42,16 @@ services:
       - "9091:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - frontend
+  jaeger:
+    image: jaegertracing/all-in-one:1.41
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "14268:14268" # Collector endpoint
+      - "6831:6831/udp" # Jaeger agent
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
     networks:
       - frontend
 networks:

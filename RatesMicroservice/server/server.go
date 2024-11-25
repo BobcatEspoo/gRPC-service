@@ -6,16 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/joho/godotenv"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"log"
 	"net"
 	"net/http"
@@ -23,19 +13,25 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func Start() {
 	Logger, _ := zap.NewProduction()
-	promExporter, err := prometheus.New()
+	tp, err := metrics.InitializeTracerProvider("MyGRPCService")
 	if err != nil {
-		Logger.Error("Failed to create Prometheus exporter: %v", zap.Error(err))
+		log.Fatalf("failed to initialize tracer provider: %v", err)
 	}
-
-	meterProvider := metric.NewMeterProvider(metric.WithReader(promExporter))
 	defer func() {
-		if err := meterProvider.Shutdown(context.Background()); err != nil {
-			Logger.Error("Failed to shut down MeterProvider: %v", zap.Error(err))
+		if err := tp.Shutdown(context.Background()); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
 		}
 	}()
 	metrics.InitMetrics()
@@ -51,8 +47,6 @@ func Start() {
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
 	)
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
@@ -72,17 +66,14 @@ func Start() {
 		}
 	}()
 	http.Handle("/metrics", promhttp.Handler())
-	http.Handle("/metrics_telemetry", promExporter)
 	if err := http.ListenAndServe(":9090", nil); err != nil {
 		Logger.Fatal("Error in running on port: %v", zap.Error(err))
 	}
-	// Ожидание системного сигнала
 	<-stop
 	Logger.Info("Receiving signal for server stop...")
 
-	// Graceful Shutdown
 	go func() {
-		time.Sleep(5 * time.Second) // Можно задать тайм-аут для завершения активных операций
+		time.Sleep(5 * time.Second)
 		Logger.Info("Shutting down...")
 		os.Exit(1)
 	}()
@@ -100,14 +91,12 @@ func AccessToDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("DB_URL not install in env")
 	}
 
-	// Подключение к базе данных
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("error in access to db: %v", err)
 	}
 	defer db.Close()
 
-	// Проверка подключения
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("database is anavailable: %v", err)
 	}

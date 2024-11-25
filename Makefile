@@ -4,6 +4,12 @@ BINARY_NAME=rates
 # Имя Docker-образа
 DOCKER_IMAGE=grpcbank-app
 
+# Имя бинарного файла
+BINARY_NAME=rates
+
+# Имя Docker-образа
+DOCKER_IMAGE=grpcbank-app
+
 # Путь к Dockerfile
 DOCKERFILE_PATH=./RatesMicroservice/Dockerfile
 
@@ -12,19 +18,19 @@ SRC_PATH=./RatesMicroservice
 
 # Сборка приложения
 build:
-	go build -o $(BINARY_NAME) ./RatesMicroservice/main.go
+	go build -o rates ./RatesMicroservice/main.go
 
 # Запуск unit-тестов
 test:
-	go test $(SRC_PATH) -v -cover
+	go test ./RatesMicroservice -v -cover
 
 # Сборка Docker-образа
 docker-build:
-	docker build -t $(DOCKER_IMAGE) -f $(DOCKERFILE_PATH) .
+	docker build -t grpcbank-app -f ./RatesMicroservice/Dockerfile .
 
 # Запуск приложения
 run: build
-	./$(BINARY_NAME)
+	./rates
 
 # Запуск линтера (golangci-lint)
 lint:
@@ -32,7 +38,7 @@ lint:
 
 # Удаление скомпилированного бинарного файла
 clean:
-	rm -f $(BINARY_NAME)
+	rm -f rates
 
 # Хелп для вывода всех доступных команд
 help:
