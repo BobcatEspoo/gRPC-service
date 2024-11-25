@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./RatesMicroservice/Dockerfile
+    ports:
+      - 50051:50051
+      - 9090:9090
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - ./RatesMicroservice/internal/migrations:/app/internal/migrations
+#      - ./wait-for-it.sh:/wait-for-it.sh
+    command: >
+      sh -c "echo 'Starting migrations...' &&
+             ./wait-for-it.sh db:5432 -- &&
+             migrate -verbose -path /app/internal/migrations -database $DB_URL up &&
+             echo 'Running app...' &&
+             ./rates"
+    networks:
+      - frontend
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - frontend
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - frontend
+networks:
+  frontend:
+    driver: bridge
+volumes:
+  db_data:
+  prometheus_data:
