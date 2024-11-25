@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"log"
 	"net"
 	"net/http"
@@ -45,8 +46,14 @@ func Start() {
 	}
 	MainServer := service.NewRateService(Db)
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.ChainUnaryInterceptor(
+			grpc_prometheus.UnaryServerInterceptor,
+			otelgrpc.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_prometheus.StreamServerInterceptor,
+			otelgrpc.StreamServerInterceptor(),
+		),
 	)
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
@@ -67,7 +74,7 @@ func Start() {
 	}()
 	http.Handle("/metrics", promhttp.Handler())
 	if err := http.ListenAndServe(":9090", nil); err != nil {
-		Logger.Fatal("Error in running on port: %v", zap.Error(err))
+		Logger.Error("HTTP server error", zap.Error(err))
 	}
 	<-stop
 	Logger.Info("Receiving signal for server stop...")

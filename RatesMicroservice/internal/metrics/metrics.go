@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"sync"
 )
 
@@ -36,7 +37,8 @@ func InitializeTracerProvider(serviceName string) (*trace.TracerProvider, error)
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
-			serviceName,
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
 		),
 	)
 	if err != nil {
