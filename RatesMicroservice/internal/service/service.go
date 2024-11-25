@@ -57,4 +57,4 @@ func (r *RateService) AddToDatabase(request, date string, asks *Asks) error {
 	return nil
 }
 
-func (ds *RateService) mustEmbedUnimplementedRatesServiceServer() {}
+func (r *RateService) mustEmbedUnimplementedRatesServiceServer() {}

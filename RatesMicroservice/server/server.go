@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -25,25 +26,26 @@ import (
 )
 
 func Start() {
+	Logger, _ := zap.NewProduction()
 	promExporter, err := prometheus.New()
 	if err != nil {
-		log.Fatalf("Failed to create Prometheus exporter: %v", err)
+		Logger.Error("Failed to create Prometheus exporter: %v", zap.Error(err))
 	}
 
 	meterProvider := metric.NewMeterProvider(metric.WithReader(promExporter))
 	defer func() {
 		if err := meterProvider.Shutdown(context.Background()); err != nil {
-			log.Printf("Failed to shut down MeterProvider: %v", err)
+			Logger.Error("Failed to shut down MeterProvider: %v", zap.Error(err))
 		}
 	}()
 	metrics.InitMetrics()
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Error in listing port: %v", err)
+		Logger.Fatal("Error in listing port: %v", zap.Error(err))
 	}
 	Db, err := AccessToDB()
 	if err != nil {
-		log.Fatalf("Error in accessing to DB: %v", err)
+		Logger.Fatal("Error in accessing to DB: %v", zap.Error(err))
 	}
 	MainServer := service.NewRateService(Db)
 	grpcServer := grpc.NewServer(
@@ -64,29 +66,29 @@ func Start() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Println("server on port: 50051")
+		Logger.Info("server on port: 50051")
 		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatalf("Error in running on port: %v", err)
+			Logger.Fatal("Error in running on port: %v", zap.Error(err))
 		}
 	}()
 	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/metrics_telemetry", promExporter)
 	if err := http.ListenAndServe(":9090", nil); err != nil {
-		log.Fatalf("Error in running on port: %v", err)
+		Logger.Fatal("Error in running on port: %v", zap.Error(err))
 	}
 	// Ожидание системного сигнала
 	<-stop
-	log.Println("Receiving signal for server stop...")
+	Logger.Info("Receiving signal for server stop...")
 
 	// Graceful Shutdown
 	go func() {
 		time.Sleep(5 * time.Second) // Можно задать тайм-аут для завершения активных операций
-		log.Println("Shutting down...")
+		Logger.Info("Shutting down...")
 		os.Exit(1)
 	}()
 	grpcServer.GracefulStop()
 
-	log.Println("server gracefully shutdown")
+	Logger.Info("server gracefully shutdown")
 }
 func AccessToDB() (*sql.DB, error) {
 	if err := godotenv.Load(".env"); err != nil {
@@ -116,12 +118,6 @@ func AccessToDB() (*sql.DB, error) {
 
 //Проверка Health Check
 //Вы можете использовать grpc-health-probe для проверки состояния сервера. Установите утилиту:
-//
-//bash
-//Копировать код
 //go install github.com/grpc-ecosystem/grpc-health-probe@latest
 //Затем проверьте статус Health Check:
-//
-//bash
-//Копировать код
 //grpc-health-probe -addr=localhost:50051
