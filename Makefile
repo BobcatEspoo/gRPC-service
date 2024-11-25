@@ -12,7 +12,7 @@ SRC_PATH=./RatesMicroservice
 
 # Сборка приложения
 build:
-	go build -o $(BINARY_NAME) main.go
+	go build -o $(BINARY_NAME) ./RatesMicroservice/main.go
 
 # Запуск unit-тестов
 test:
