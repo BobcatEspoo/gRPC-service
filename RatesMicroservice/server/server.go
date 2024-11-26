@@ -24,7 +24,6 @@ import (
 
 func Start() {
 	Logger, _ := zap.NewProduction()
-	//metrics.InitOpenTelemetry()
 	metrics.InitMetrics()
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {

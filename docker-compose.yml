@@ -17,7 +17,7 @@ services:
     command: >
       sh -c "echo 'Starting migrations...'
              migrate -verbose -path /app/internal/migrations -database $DB_URL up &&
-             sleep 1 &&
+             sleep 2 &&
              echo 'Running app...' &&
              ./rates"
     environment:
