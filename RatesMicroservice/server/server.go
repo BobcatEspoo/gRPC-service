@@ -3,7 +3,6 @@ package server
 import (
 	"RatesMicroservice/internal/metrics"
 	"RatesMicroservice/internal/service"
-	"context"
 	"database/sql"
 	"fmt"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -26,15 +25,6 @@ import (
 
 func Start() {
 	Logger, _ := zap.NewProduction()
-	tp, err := metrics.InitializeTracerProvider("MyGRPCService")
-	if err != nil {
-		log.Fatalf("failed to initialize tracer provider: %v", err)
-	}
-	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			log.Printf("Error shutting down tracer provider: %v", err)
-		}
-	}()
 	metrics.InitMetrics()
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
