@@ -89,7 +89,9 @@ func AccessToDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error in access to db: %v", err)
 	}
-	defer db.Close()
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(30 * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("database is anavailable: %v", err)
