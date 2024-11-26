@@ -20,9 +20,6 @@ services:
              sleep 2 &&
              echo 'Running app...' &&
              ./rates"
-    environment:
-      - JAEGER_AGENT_HOST=jaeger
-      - JAEGER_AGENT_PORT=6831
     networks:
       - frontend
   db:
