@@ -5,7 +5,6 @@ import (
 	"RatesMicroservice/internal/service"
 	"database/sql"
 	"fmt"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"log"
 	"net"
 	"net/http"
@@ -38,11 +37,9 @@ func Start() {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpc_prometheus.UnaryServerInterceptor,
-			otelgrpc.UnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
 			grpc_prometheus.StreamServerInterceptor,
-			otelgrpc.StreamServerInterceptor(),
 		),
 	)
 	healthServer := health.NewServer()
